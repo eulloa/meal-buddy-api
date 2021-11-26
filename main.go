@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 
+	"time"
+
+	"github.com/eulloa/meal-buddy/data"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 )
@@ -20,7 +23,9 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	io.WriteString(w, "index page")
+	data.Connect()
+	t := time.Now().String()
+	io.WriteString(w, "Connected at "+t)
 }
 
 func random(w http.ResponseWriter, req *http.Request) {

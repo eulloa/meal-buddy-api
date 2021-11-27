@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	_ "github.com/lib/pq"
@@ -42,7 +43,7 @@ func connect() *sql.DB {
 	return db
 }
 
-func GetRecipes() Recipe {
+func GetRecipes() ([]byte, error) {
 	db := connect()
 
 	stmt := fmt.Sprintf("SELECT * FROM %s", table)
@@ -51,15 +52,18 @@ func GetRecipes() Recipe {
 
 	CheckError(err)
 
-	var r Recipe
+	rs := make([]Recipe, 0)
 
 	for rows.Next() {
+		var r Recipe
 		e := rows.Scan(&r.Name)
 		CheckError(e)
+		rs = append(rs, r)
 	}
 
 	defer rows.Close()
 	defer db.Close()
 
-	return r
+	bs, err := json.Marshal(rs)
+	return bs, err
 }

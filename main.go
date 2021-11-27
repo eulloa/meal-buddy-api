@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -22,9 +21,13 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	r := data.GetRecipes()
-	recipes := fmt.Sprintf("%v", r)
-	io.WriteString(w, recipes)
+	r, err := data.GetRecipes()
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	io.WriteString(w, string(r))
 }
 
 func random(w http.ResponseWriter, req *http.Request) {

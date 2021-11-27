@@ -7,11 +7,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type Recipe struct {
+	Name string
+}
+
 const (
 	dbname   = "mealbuddy"
 	host     = "localhost"
 	password = "postgres"
 	port     = 5432
+	table    = "recipes"
 	user     = "efrenulloa"
 )
 
@@ -21,8 +26,10 @@ func CheckError(err error) {
 	}
 }
 
-func Connect() {
-	conn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+func connect() *sql.DB {
+	conn := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname,
+	)
 
 	db, connErr := sql.Open("postgres", conn)
 
@@ -32,10 +39,27 @@ func Connect() {
 
 	CheckError(pingErr)
 
-	defer db.Close()
+	return db
 }
 
-// func ListRecipes() {
-// 	Connect()
+func GetRecipes() Recipe {
+	db := connect()
 
-// }
+	stmt := fmt.Sprintf("SELECT * FROM %s", table)
+
+	rows, err := db.Query(stmt)
+
+	CheckError(err)
+
+	var r Recipe
+
+	for rows.Next() {
+		e := rows.Scan(&r.Name)
+		CheckError(e)
+	}
+
+	defer rows.Close()
+	defer db.Close()
+
+	return r
+}

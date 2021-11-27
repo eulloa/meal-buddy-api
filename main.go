@@ -1,11 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
-
-	"time"
 
 	"github.com/eulloa/meal-buddy/data"
 	"github.com/gorilla/mux"
@@ -23,9 +22,9 @@ func main() {
 }
 
 func index(w http.ResponseWriter, req *http.Request) {
-	data.Connect()
-	t := time.Now().String()
-	io.WriteString(w, "Connected at "+t)
+	r := data.GetRecipes()
+	recipes := fmt.Sprintf("%v", r)
+	io.WriteString(w, recipes)
 }
 
 func random(w http.ResponseWriter, req *http.Request) {

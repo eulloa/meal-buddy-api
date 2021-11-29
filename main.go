@@ -20,16 +20,17 @@ func main() {
 	log.Fatal(http.ListenAndServe(":1111", handler))
 }
 
-func index(w http.ResponseWriter, req *http.Request) {
+func index(rw http.ResponseWriter, req *http.Request) {
 	r, err := data.GetRecipes()
 	if err != nil {
 		panic(err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	io.WriteString(w, string(r))
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	rw.Write(r)
 }
 
-func random(w http.ResponseWriter, req *http.Request) {
-	io.WriteString(w, "Random!")
+func random(rw http.ResponseWriter, req *http.Request) {
+	io.WriteString(rw, "Random!")
 }

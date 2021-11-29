@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -21,14 +22,15 @@ func main() {
 }
 
 func index(rw http.ResponseWriter, req *http.Request) {
-	r, err := data.GetRecipes()
+	recipes := data.GetRecipes()
+	recipesJson, err := json.Marshal(recipes)
 	if err != nil {
 		panic(err)
 	}
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write(r)
+	rw.Write(recipesJson)
 }
 
 func random(rw http.ResponseWriter, req *http.Request) {

@@ -2,7 +2,6 @@ package data
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	_ "github.com/lib/pq"
@@ -44,7 +43,7 @@ func connect() *sql.DB {
 	return db
 }
 
-func GetRecipes() ([]byte, error) {
+func GetRecipes() []Recipe {
 	db := connect()
 
 	stmt := fmt.Sprintf("SELECT * FROM %s", table)
@@ -65,6 +64,5 @@ func GetRecipes() ([]byte, error) {
 	defer rows.Close()
 	defer db.Close()
 
-	bs, err := json.Marshal(rs)
-	return bs, err
+	return rs
 }

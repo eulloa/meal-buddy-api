@@ -9,7 +9,8 @@ import (
 )
 
 type Recipe struct {
-	Name string
+	id   int
+	Name string `json:"name"`
 }
 
 const (

@@ -8,8 +8,9 @@ import (
 )
 
 type Recipe struct {
+	Err  string `json:"error,omitempty"`
 	id   int
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 }
 
 const (
@@ -43,7 +44,7 @@ func connect() *sql.DB {
 	return db
 }
 
-func GetRecipes() []Recipe {
+func GetAllRecipes() []Recipe {
 	db := connect()
 
 	stmt := fmt.Sprintf("SELECT * FROM %s", table)
@@ -56,7 +57,7 @@ func GetRecipes() []Recipe {
 
 	for rows.Next() {
 		var r Recipe
-		e := rows.Scan(&r.Name)
+		e := rows.Scan(&r.id, &r.Name)
 		CheckError(e)
 		rs = append(rs, r)
 	}
@@ -65,4 +66,36 @@ func GetRecipes() []Recipe {
 	defer db.Close()
 
 	return rs
+}
+
+func GetRecipe(name string) Recipe {
+	db := connect()
+	wc := "%"
+	name += wc
+	stmt := fmt.Sprintf("SELECT * FROM %s WHERE name LIKE '%s'", table, name)
+
+	rows, err := db.Query(stmt)
+
+	CheckError(err)
+
+	fmt.Println(rows)
+
+	if rows == nil {
+		fmt.Print("Rows are nil!")
+		return Recipe{
+			Err: fmt.Sprintf("No matching recipes with the name %s were found", name),
+		}
+	}
+
+	var r Recipe
+
+	for rows.Next() {
+		e := rows.Scan(&r.id, &r.Name)
+		CheckError(e)
+	}
+
+	defer rows.Close()
+	defer db.Close()
+
+	return r
 }

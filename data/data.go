@@ -8,8 +8,9 @@ import (
 )
 
 type Recipe struct {
-	Err  string `json:"error,omitempty"`
-	id   int
+	id int
+	// Ingredients  []string `json:"ingredients,omitempty"`
+	// Instructions []string `json:"instructions,omitempty"`
 	Name string `json:"name,omitempty"`
 }
 
@@ -70,26 +71,17 @@ func GetAllRecipes() []Recipe {
 
 func GetRecipe(name string) Recipe {
 	db := connect()
-	wc := "%"
-	name += wc
-	stmt := fmt.Sprintf("SELECT * FROM %s WHERE name LIKE '%s'", table, name)
+	stmt := fmt.Sprintf("SELECT * FROM %s WHERE name = '%s'", table, name)
 
 	rows, err := db.Query(stmt)
 
 	CheckError(err)
 
-	fmt.Println(rows)
-
-	if rows == nil {
-		fmt.Print("Rows are nil!")
-		return Recipe{
-			Err: fmt.Sprintf("No matching recipes with the name %s were found", name),
-		}
-	}
-
 	var r Recipe
 
 	for rows.Next() {
+		// TODO: add additional meal data (ingredients, instructions, etc)
+		// e := rows.Scan(&r.id, &r.Ingredients, &r.Instructions, &r.Name)
 		e := rows.Scan(&r.id, &r.Name)
 		CheckError(e)
 	}

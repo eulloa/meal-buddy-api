@@ -10,21 +10,14 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var vars = getVars()
+
 type Recipe struct {
 	id int
 	// Ingredients  []string `json:"ingredients,omitempty"`
 	// Instructions []string `json:"instructions,omitempty"`
 	Name string `json:"name,omitempty"`
 }
-
-const (
-	dbname   = "mealbuddy"
-	host     = "localhost"
-	password = "postgres"
-	port     = 5432
-	table    = "recipes"
-	user     = "efrenulloa"
-)
 
 func CheckError(err error) {
 	if err != nil {
@@ -43,8 +36,6 @@ func getVars() map[string]string {
 }
 
 func connect() *sql.DB {
-	vars := getVars()
-
 	port, err := strconv.Atoi(vars["PORT"])
 
 	CheckError(err)
@@ -68,7 +59,7 @@ func connect() *sql.DB {
 func GetAllRecipes() []Recipe {
 	db := connect()
 
-	stmt := fmt.Sprintf("SELECT * FROM %s", table)
+	stmt := fmt.Sprintf("SELECT * FROM %s", vars["TABLE"])
 
 	rows, err := db.Query(stmt)
 
@@ -91,7 +82,7 @@ func GetAllRecipes() []Recipe {
 
 func GetRecipe(name string) Recipe {
 	db := connect()
-	stmt := fmt.Sprintf("SELECT * FROM %s WHERE name = '%s'", table, name)
+	stmt := fmt.Sprintf("SELECT * FROM %s WHERE name = '%s'", vars["TABLE"], name)
 
 	rows, err := db.Query(stmt)
 

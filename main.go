@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 
 	"github.com/eulloa/meal-buddy/data"
@@ -12,14 +13,16 @@ import (
 
 func main() {
 	router := mux.NewRouter()
+	port := ":1111"
 
-	router.HandleFunc("/", index).Methods("GET")
+	router.HandleFunc("/recipe/random", random).Methods("GET")
 	router.HandleFunc("/recipe/{name}", recipe).Methods("GET")
 	router.HandleFunc("/recipe/add", add).Methods("GET")
-	router.HandleFunc("/recipe/random", random).Methods("GET")
+	router.HandleFunc("/", index).Methods("GET")
 
 	handler := cors.Default().Handler(router)
-	log.Fatal(http.ListenAndServe(":1111", handler))
+	log.Printf("Listening on port %s", port)
+	log.Fatal(http.ListenAndServe(port, handler))
 }
 
 func index(rw http.ResponseWriter, req *http.Request) {
@@ -38,17 +41,24 @@ func index(rw http.ResponseWriter, req *http.Request) {
 func add(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
-
-	// bs, _ := json.Marshal("addRecipe")
 	rw.Write([]byte("add"))
 }
 
-// TODO: implement method
 func random(rw http.ResponseWriter, req *http.Request) {
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusCreated)
+	recipes := data.GetAllRecipes()
+	_, err := json.Marshal(recipes)
 
-	rw.Write([]byte("random"))
+	if err != nil {
+		panic(err)
+	}
+
+	randomInt := rand.Intn(len(recipes))
+	randomRecipe := recipes[randomInt]
+	randomJson, err := json.Marshal(randomRecipe)
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	rw.Write(randomJson)
 }
 
 func recipe(rw http.ResponseWriter, req *http.Request) {

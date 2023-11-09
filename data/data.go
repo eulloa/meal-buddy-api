@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"strconv"
+
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -29,9 +32,26 @@ func CheckError(err error) {
 	}
 }
 
+func getVars() map[string]string {
+	var envs map[string]string
+
+	envs, err := godotenv.Read(".env")
+
+	CheckError(err)
+
+	return envs
+}
+
 func connect() *sql.DB {
+	vars := getVars()
+
+	port, err := strconv.Atoi(vars["PORT"])
+
+	CheckError(err)
+
 	conn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname,
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		vars["HOST"], port, vars["USER"], vars["PASSWORD"], vars["DBNAME"],
 	)
 
 	db, connErr := sql.Open("postgres", conn)

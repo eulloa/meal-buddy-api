@@ -28,9 +28,8 @@ func main() {
 func index(rw http.ResponseWriter, req *http.Request) {
 	recipes := data.GetAllRecipes()
 	recipesJson, err := json.Marshal(recipes)
-	if err != nil {
-		panic(err)
-	}
+
+	data.CheckError(err)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
@@ -48,9 +47,7 @@ func random(rw http.ResponseWriter, req *http.Request) {
 	recipes := data.GetAllRecipes()
 	_, err := json.Marshal(recipes)
 
-	if err != nil {
-		panic(err)
-	}
+	data.CheckError(err)
 
 	randomInt := rand.Intn(len(recipes))
 	randomRecipe := recipes[randomInt]
@@ -65,9 +62,8 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 	name := mux.Vars(req)["name"]
 	r := data.GetRecipe(name)
 	recipeJson, err := json.Marshal(r)
-	if err != nil {
-		panic(err)
-	}
+
+	data.CheckError(err)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)

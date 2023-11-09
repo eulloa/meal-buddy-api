@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 
 	"strconv"
 
@@ -101,4 +102,15 @@ func GetRecipe(name string) Recipe {
 	defer db.Close()
 
 	return r
+}
+
+func GetRandomRecipe() Recipe {
+	recipes := GetAllRecipes()
+	randomInt := rand.Intn(len(recipes))
+	randomRecipe := recipes[randomInt]
+
+	return Recipe{
+		id:   randomRecipe.id,
+		Name: randomRecipe.Name,
+	}
 }

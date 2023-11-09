@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
 
 	"github.com/eulloa/meal-buddy/data"
@@ -44,14 +43,10 @@ func add(rw http.ResponseWriter, req *http.Request) {
 }
 
 func random(rw http.ResponseWriter, req *http.Request) {
-	recipes := data.GetAllRecipes()
-	_, err := json.Marshal(recipes)
+	randomRecipe := data.GetRandomRecipe()
+	randomJson, err := json.Marshal(randomRecipe)
 
 	data.CheckError(err)
-
-	randomInt := rand.Intn(len(recipes))
-	randomRecipe := recipes[randomInt]
-	randomJson, err := json.Marshal(randomRecipe)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusOK)

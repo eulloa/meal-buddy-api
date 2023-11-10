@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -15,9 +16,14 @@ var vars = getVars()
 
 type Recipe struct {
 	id int
-	// Ingredients  []string `json:"ingredients,omitempty"`
-	// Instructions []string `json:"instructions,omitempty"`
-	Name string `json:"name,omitempty"`
+	// Ingredients Ingredients `json:"ingredients"`
+	Instructions []string `json:"instructions"`
+	Name         string   `json:"name,omitempty"`
+}
+
+type Instructions struct {
+	instructions_id int
+	Instructions    []byte
 }
 
 func CheckError(err error) {
@@ -90,17 +96,36 @@ func GetRecipe(name string) Recipe {
 	CheckError(err)
 
 	var r Recipe
+	var i Instructions
 
+	// TODO: separate instructions query logic into reusable func
 	for rows.Next() {
 		// TODO: add additional meal data (ingredients, instructions, etc)
 		// e := rows.Scan(&r.id, &r.Ingredients, &r.Instructions, &r.Name)
 		e := rows.Scan(&r.id, &r.Name)
 		CheckError(e)
+
+		// query for associated instructions
+		instructionQuery := fmt.Sprintf("SELECT * FROM instructions WHERE instructions_id = %d", r.id)
+		instructionRow, instructionsErr := db.Query(instructionQuery)
+		CheckError(instructionsErr)
+
+		for instructionRow.Next() {
+			iErr := instructionRow.Scan(&i.instructions_id, &i.Instructions)
+			CheckError(iErr)
+
+			// convert byte array to string
+			instructions := string(i.Instructions[:])
+			ia := strings.Split(instructions, ", ")
+
+			r.Instructions = ia
+		}
+
+		instructionRow.Close()
 	}
 
 	defer rows.Close()
 	defer db.Close()
-
 	return r
 }
 

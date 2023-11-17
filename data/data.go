@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"math/rand"
 
 	"strconv"
@@ -80,7 +81,6 @@ func GetAllRecipes() []Recipe {
 	return rs
 }
 
-// TODO: handle empty result set
 func GetRecipe(id int) Recipe {
 	db := connect()
 	stmt, prepareErr := db.Prepare("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
@@ -90,7 +90,11 @@ func GetRecipe(id int) Recipe {
 	var r Recipe
 	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
 
-	CheckError(err)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Fatalf("No recipe with id %d could be retrieved!", id)
+		}
+	}
 
 	defer db.Close()
 	return r

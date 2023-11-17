@@ -60,6 +60,13 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 	data.CheckError(convErr)
 
 	r := data.GetRecipe(id)
+
+	// if rError != nil {
+	// 	rw.WriteHeader(http.StatusInternalServerError)
+	// 	eJson, _ := json.Marshal(rError)
+	// 	rw.Write(eJson)
+	// }
+
 	recipeJson, err := json.Marshal(r)
 
 	data.CheckError(err)

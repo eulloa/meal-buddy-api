@@ -61,8 +61,7 @@ func connect() *sql.DB {
 func GetAllRecipes() []Recipe {
 	db := connect()
 
-	// TODO: INNER JOIN
-	rows, queryErr := db.Query("SELECT * FROM recipes")
+	rows, queryErr := db.Query("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
 
 	CheckError(queryErr)
 
@@ -70,7 +69,7 @@ func GetAllRecipes() []Recipe {
 
 	for rows.Next() {
 		var r Recipe
-		e := rows.Scan(&r.id, &r.Name)
+		e := rows.Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
 		CheckError(e)
 		rs = append(rs, r)
 	}
@@ -103,7 +102,9 @@ func GetRandomRecipe() Recipe {
 	randomRecipe := recipes[randomInt]
 
 	return Recipe{
-		id:   randomRecipe.id,
-		Name: randomRecipe.Name,
+		Name:         randomRecipe.Name,
+		id:           randomRecipe.id,
+		Ingredients:  randomRecipe.Ingredients,
+		Instructions: randomRecipe.Instructions,
 	}
 }

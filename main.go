@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/eulloa/meal-buddy/data"
 	"github.com/gorilla/mux"
@@ -15,7 +16,7 @@ func main() {
 	port := ":1111"
 
 	router.HandleFunc("/recipe/random", random).Methods("GET")
-	router.HandleFunc("/recipe/{name}", recipe).Methods("GET")
+	router.HandleFunc("/recipe/{id}", recipe).Methods("GET")
 	router.HandleFunc("/recipe/add", add).Methods("GET")
 	router.HandleFunc("/", index).Methods("GET")
 
@@ -54,8 +55,11 @@ func random(rw http.ResponseWriter, req *http.Request) {
 }
 
 func recipe(rw http.ResponseWriter, req *http.Request) {
-	name := mux.Vars(req)["name"]
-	r := data.GetRecipe(name)
+	id, convErr := strconv.Atoi(mux.Vars(req)["id"])
+
+	data.CheckError(convErr)
+
+	r := data.GetRecipe(id)
 	recipeJson, err := json.Marshal(r)
 
 	data.CheckError(err)

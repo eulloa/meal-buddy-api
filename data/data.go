@@ -6,24 +6,19 @@ import (
 	"math/rand"
 
 	"strconv"
-	"strings"
 
 	"github.com/joho/godotenv"
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
 var vars = getVars()
 
 type Recipe struct {
-	id int
-	// Ingredients Ingredients `json:"ingredients"`
+	id           int
+	Ingredients  []string `json:"ingredients"`
 	Instructions []string `json:"instructions"`
 	Name         string   `json:"name,omitempty"`
-}
-
-type Instructions struct {
-	instructions_id int
-	Instructions    []byte
 }
 
 func CheckError(err error) {
@@ -87,41 +82,19 @@ func GetAllRecipes() []Recipe {
 	return rs
 }
 
-func GetRecipe(name string) Recipe {
+func GetRecipe(id int) Recipe {
 	db := connect()
-	stmt := fmt.Sprintf("SELECT * FROM %s WHERE name = '%s'", vars["TABLE"], name)
+	stmt := fmt.Sprintf("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = '%d'", id)
 
 	rows, err := db.Query(stmt)
 
 	CheckError(err)
 
 	var r Recipe
-	var i Instructions
 
-	// TODO: separate instructions query logic into reusable func
 	for rows.Next() {
-		// TODO: add additional meal data (ingredients, instructions, etc)
-		// e := rows.Scan(&r.id, &r.Ingredients, &r.Instructions, &r.Name)
-		e := rows.Scan(&r.id, &r.Name)
+		e := rows.Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
 		CheckError(e)
-
-		// query for associated instructions
-		instructionQuery := fmt.Sprintf("SELECT * FROM instructions WHERE instructions_id = %d", r.id)
-		instructionRow, instructionsErr := db.Query(instructionQuery)
-		CheckError(instructionsErr)
-
-		for instructionRow.Next() {
-			iErr := instructionRow.Scan(&i.instructions_id, &i.Instructions)
-			CheckError(iErr)
-
-			// convert byte array to string
-			instructions := string(i.Instructions[:])
-			ia := strings.Split(instructions, ", ")
-
-			r.Instructions = ia
-		}
-
-		instructionRow.Close()
 	}
 
 	defer rows.Close()

@@ -15,10 +15,10 @@ import (
 var vars = getVars()
 
 type Recipe struct {
+	Name         string `json:"name,omitempty"`
 	id           int
 	Ingredients  []string `json:"ingredients"`
 	Instructions []string `json:"instructions"`
-	Name         string   `json:"name,omitempty"`
 }
 
 func CheckError(err error) {
@@ -61,11 +61,10 @@ func connect() *sql.DB {
 func GetAllRecipes() []Recipe {
 	db := connect()
 
-	stmt := fmt.Sprintf("SELECT * FROM %s", vars["TABLE"])
+	// TODO: INNER JOIN
+	rows, queryErr := db.Query("SELECT * FROM recipes")
 
-	rows, err := db.Query(stmt)
-
-	CheckError(err)
+	CheckError(queryErr)
 
 	rs := make([]Recipe, 0)
 
@@ -82,22 +81,18 @@ func GetAllRecipes() []Recipe {
 	return rs
 }
 
+// TODO: handle empty result set
 func GetRecipe(id int) Recipe {
 	db := connect()
-	stmt := fmt.Sprintf("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = '%d'", id)
+	stmt, prepareErr := db.Prepare("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
 
-	rows, err := db.Query(stmt)
+	CheckError(prepareErr)
+
+	var r Recipe
+	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
 
 	CheckError(err)
 
-	var r Recipe
-
-	for rows.Next() {
-		e := rows.Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
-		CheckError(e)
-	}
-
-	defer rows.Close()
 	defer db.Close()
 	return r
 }

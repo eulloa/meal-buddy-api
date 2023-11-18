@@ -15,9 +15,9 @@ func main() {
 	router := mux.NewRouter()
 	port := ":1111"
 
-	router.HandleFunc("/recipe/random", random).Methods("GET")
 	router.HandleFunc("/recipe/{id}", recipe).Methods("GET")
 	router.HandleFunc("/recipe/add", add).Methods("GET")
+	router.HandleFunc("/recipe/list/{number}", createList).Methods("GET")
 	router.HandleFunc("/", index).Methods("GET")
 
 	handler := cors.Default().Handler(router)
@@ -43,17 +43,6 @@ func add(rw http.ResponseWriter, req *http.Request) {
 	rw.Write([]byte("add"))
 }
 
-func random(rw http.ResponseWriter, req *http.Request) {
-	randomRecipe := data.GetRandomRecipe()
-	randomJson, err := json.Marshal(randomRecipe)
-
-	data.CheckError(err)
-
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusOK)
-	rw.Write(randomJson)
-}
-
 func recipe(rw http.ResponseWriter, req *http.Request) {
 	id, convErr := strconv.Atoi(mux.Vars(req)["id"])
 
@@ -67,4 +56,19 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write(recipeJson)
+}
+
+func createList(rw http.ResponseWriter, req *http.Request) {
+	numOfRecipes, convError := strconv.Atoi(mux.Vars(req)["number"])
+
+	data.CheckError(convError)
+
+	recipes := data.CreateRecipeList(numOfRecipes)
+	rJson, err := json.Marshal(recipes)
+
+	data.CheckError(err)
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusCreated)
+	rw.Write(rJson)
 }

@@ -3,6 +3,7 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"math/rand"
 
 	"strconv"
@@ -96,15 +97,29 @@ func GetRecipe(id int) Recipe {
 	return r
 }
 
-func GetRandomRecipe() Recipe {
+func CreateRecipeList(recipesInList int) []Recipe {
 	recipes := GetAllRecipes()
-	randomInt := rand.Intn(len(recipes))
-	randomRecipe := recipes[randomInt]
+	length := len(recipes)
+	var list []Recipe
 
-	return Recipe{
-		Name:         randomRecipe.Name,
-		id:           randomRecipe.id,
-		Ingredients:  randomRecipe.Ingredients,
-		Instructions: randomRecipe.Instructions,
+	switch {
+	case recipesInList > length:
+		log.Println("Warning: The number of requested recipes in the list is greater than the total number of recipes!")
+		break
+	case recipesInList <= 0:
+		fmt.Println("Warning: Number of recipes in the list may not be less than or equal to 0!")
+		break
+	case recipesInList == length:
+		return recipes
+	default:
+		for recipesInList > 0 {
+			rand := rand.Intn(len(recipes))
+			list = append(list, recipes[rand])
+			//remove random recipe from recipes so we don't have duplicates
+			recipes = append(recipes[:rand], recipes[rand+1:]...)
+			recipesInList -= 1
+		}
 	}
+
+	return list
 }

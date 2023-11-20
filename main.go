@@ -16,7 +16,7 @@ func main() {
 	port := ":1111"
 
 	router.HandleFunc("/recipe/{id}", recipe).Methods("GET")
-	router.HandleFunc("/recipe/add", add).Methods("GET")
+	router.HandleFunc("/recipe/add", add).Methods("POST")
 	router.HandleFunc("/recipe/list/{number}", createList).Methods("GET")
 	router.HandleFunc("/", index).Methods("GET")
 
@@ -36,11 +36,18 @@ func index(rw http.ResponseWriter, req *http.Request) {
 	rw.Write(recipesJson)
 }
 
-// TODO: implement method
 func add(rw http.ResponseWriter, req *http.Request) {
+	var res map[string]interface{}
+	json.NewDecoder(req.Body).Decode(&res)
+
+	id := data.AddRecipe(res)
+	idJson, err := json.Marshal(id)
+
+	data.CheckError(err)
+
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write([]byte("add"))
+	rw.Write(idJson)
 }
 
 func recipe(rw http.ResponseWriter, req *http.Request) {

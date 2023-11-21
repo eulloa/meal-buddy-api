@@ -123,3 +123,98 @@ func CreateRecipeList(recipesInList int) []Recipe {
 
 	return list
 }
+
+func AddRecipe(res map[string]interface{}) int {
+	// TODO: move sanitize logic to private func
+	// sanitize data; check for required and invalid keys
+	required := []string{"Name", "Ingredients", "Instructions"}
+	validKeys := make([]string, 0)
+	invalidKeys := make([]string, 0)
+
+	for k := range res {
+		c := contains(required, k)
+
+		if !c {
+			invalidKeys = append(invalidKeys, k)
+		} else {
+			validKeys = append(validKeys, k)
+		}
+	}
+
+	if len(validKeys) != len(required) {
+		log.Fatal("Error: Post body data does not contain all required keys!")
+	}
+
+	if len(invalidKeys) > 0 {
+		log.Fatal("Error: Post body data contains redundant/illegal keys!")
+	}
+
+	ins := res["Instructions"].([]interface{})
+	instructions := make([]string, 0)
+
+	ings := res["Ingredients"].([]interface{})
+	ingredients := make([]string, 0)
+
+	for _, val := range ins {
+		if len(val.(string)) > 0 {
+			instructions = append(instructions, val.(string))
+		}
+	}
+
+	for _, val := range ings {
+		if len(val.(string)) > 0 {
+			ingredients = append(ingredients, val.(string))
+		}
+	}
+
+	r := Recipe{
+		Name:         res["Name"].(string),
+		Ingredients:  ingredients,
+		Instructions: instructions,
+	}
+
+	db := connect()
+
+	stmt, err := db.Prepare("INSERT INTO recipes (name) VALUES ($1)")
+
+	CheckError(err)
+
+	_, execErr := stmt.Exec(r.Name)
+
+	CheckError(execErr)
+
+	idQuery, idErr := db.Prepare("SELECT id FROM recipes WHERE name = $1")
+
+	CheckError(idErr)
+
+	row := idQuery.QueryRow(r.Name)
+
+	var id int
+	scanErr := row.Scan(&id)
+
+	CheckError(scanErr)
+
+	ingsStmt, ingsErr := db.Prepare("INSERT INTO ingredients (ingredients, recipe_id) VALUES ($1, $2)")
+	insStmt, insErr := db.Prepare("INSERT INTO instructions (instructions, recipe_id) VALUES ($1, $2)")
+
+	CheckError(ingsErr)
+	CheckError(insErr)
+
+	_, ingsExecErr := ingsStmt.Exec(pq.Array(r.Ingredients), id)
+	CheckError(ingsExecErr)
+
+	_, insExecErr := insStmt.Exec(pq.Array(r.Instructions), id)
+	CheckError(insExecErr)
+
+	return id
+}
+
+func contains(slice []string, item string) bool {
+	for _, v := range slice {
+		if item == v {
+			return true
+		}
+	}
+
+	return false
+}

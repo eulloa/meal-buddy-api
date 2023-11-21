@@ -125,29 +125,7 @@ func CreateRecipeList(recipesInList int) []Recipe {
 }
 
 func AddRecipe(res map[string]interface{}) int {
-	// TODO: move sanitize logic to private func
-	// sanitize data; check for required and invalid keys
-	required := []string{"Name", "Ingredients", "Instructions"}
-	validKeys := make([]string, 0)
-	invalidKeys := make([]string, 0)
-
-	for k := range res {
-		c := contains(required, k)
-
-		if !c {
-			invalidKeys = append(invalidKeys, k)
-		} else {
-			validKeys = append(validKeys, k)
-		}
-	}
-
-	if len(validKeys) != len(required) {
-		log.Fatal("Error: Post body data does not contain all required keys!")
-	}
-
-	if len(invalidKeys) > 0 {
-		log.Fatal("Error: Post body data contains redundant/illegal keys!")
-	}
+	sanitize(res)
 
 	ins := res["Instructions"].([]interface{})
 	instructions := make([]string, 0)
@@ -217,4 +195,28 @@ func contains(slice []string, item string) bool {
 	}
 
 	return false
+}
+
+func sanitize(res map[string]interface{}) {
+	required := []string{"Name", "Ingredients", "Instructions"}
+	validKeys := make([]string, 0)
+	invalidKeys := make([]string, 0)
+
+	for k := range res {
+		c := contains(required, k)
+
+		if !c {
+			invalidKeys = append(invalidKeys, k)
+		} else {
+			validKeys = append(validKeys, k)
+		}
+	}
+
+	if len(validKeys) != len(required) {
+		log.Fatal("Error: Post body data does not contain all required keys!")
+	}
+
+	if len(invalidKeys) > 0 {
+		log.Fatal("Error: Post body data contains redundant/illegal keys!")
+	}
 }

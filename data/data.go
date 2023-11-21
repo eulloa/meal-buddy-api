@@ -184,7 +184,22 @@ func AddRecipe(res map[string]interface{}) int {
 	_, insExecErr := insStmt.Exec(pq.Array(r.Instructions), id)
 	CheckError(insExecErr)
 
+	defer db.Close()
 	return id
+}
+
+func DeleteRecipe(id int) {
+	db := connect()
+
+	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = $1")
+
+	CheckError(err)
+
+	_, stmtErr := stmt.Exec(id)
+
+	CheckError(stmtErr)
+
+	defer db.Close()
 }
 
 func contains(slice []string, item string) bool {

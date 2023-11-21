@@ -18,6 +18,7 @@ func main() {
 	router.HandleFunc("/recipe/{id}", recipe).Methods("GET")
 	router.HandleFunc("/recipe/add", add).Methods("POST")
 	router.HandleFunc("/recipe/list/{number}", createList).Methods("GET")
+	router.HandleFunc("/recipe/delete/{id}", delete).Methods("DELETE")
 	router.HandleFunc("/", index).Methods("GET")
 
 	handler := cors.Default().Handler(router)
@@ -78,4 +79,14 @@ func createList(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
 	rw.Write(rJson)
+}
+
+func delete(rw http.ResponseWriter, req *http.Request) {
+	id, err := strconv.Atoi(mux.Vars(req)["id"])
+
+	data.CheckError(err)
+
+	data.DeleteRecipe(id)
+
+	rw.WriteHeader(http.StatusNoContent)
 }

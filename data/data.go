@@ -16,10 +16,13 @@ import (
 var vars = getVars()
 
 type Recipe struct {
+	Description  string `json:"description"`
 	Name         string `json:"name,omitempty"`
 	id           int
+	Image        string   `json:"image"`
 	Ingredients  []string `json:"ingredients"`
 	Instructions []string `json:"instructions"`
+	Url          string   `json:"url"`
 }
 
 func CheckError(err error) {
@@ -62,7 +65,7 @@ func connect() *sql.DB {
 func GetAllRecipes() []Recipe {
 	db := connect()
 
-	rows, queryErr := db.Query("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
+	rows, queryErr := db.Query("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
 
 	CheckError(queryErr)
 
@@ -70,7 +73,7 @@ func GetAllRecipes() []Recipe {
 
 	for rows.Next() {
 		var r Recipe
-		e := rows.Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
+		e := rows.Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 		CheckError(e)
 		rs = append(rs, r)
 	}
@@ -84,12 +87,12 @@ func GetAllRecipes() []Recipe {
 // TODO: handle empty result set
 func GetRecipe(id int) Recipe {
 	db := connect()
-	stmt, prepareErr := db.Prepare("SELECT id, name, ingredients, instructions FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
+	stmt, prepareErr := db.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
 
 	CheckError(prepareErr)
 
 	var r Recipe
-	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions))
+	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 
 	CheckError(err)
 
@@ -146,18 +149,21 @@ func AddRecipe(res map[string]interface{}) int {
 	}
 
 	r := Recipe{
-		Name:         res["Name"].(string),
+		Description:  res["Description"].(string),
+		Image:        res["Image"].(string),
 		Ingredients:  ingredients,
 		Instructions: instructions,
+		Name:         res["Name"].(string),
+		Url:          res["Url"].(string),
 	}
 
 	db := connect()
 
-	stmt, err := db.Prepare("INSERT INTO recipes (name) VALUES ($1)")
+	stmt, err := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
 
 	CheckError(err)
 
-	_, execErr := stmt.Exec(r.Name)
+	_, execErr := stmt.Exec(r.Name, r.Description, r.Image, r.Url)
 
 	CheckError(execErr)
 
@@ -212,8 +218,9 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
+// TODO: check for empty strings
 func sanitize(res map[string]interface{}) {
-	required := []string{"Name", "Ingredients", "Instructions"}
+	required := []string{"Description", "Image", "Ingredients", "Instructions", "Name", "Url"}
 	validKeys := make([]string, 0)
 	invalidKeys := make([]string, 0)
 

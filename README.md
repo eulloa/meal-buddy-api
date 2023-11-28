@@ -10,9 +10,9 @@ Once you have Golang and PostgreSQL installed, pull down the meal-buddy-api and 
 
 `psql -h localhost -U {your postgres username} -f scripts/db-init.sql`
 
-*note that the `db-init.sql` script may require you to add execute permissions; in the event this is the case, run `chmod u+wxr scripts/db-init.sql` to grant the file owner permissions to read, write or execute the file*
+_note that the `db-init.sql` script may require you to add execute permissions; in the event this is the case, run `chmod u+wxr scripts/db-init.sql` to grant the file owner permissions to read, write or execute the file_
 
-With the database created and seeded, navigate to the project root in a terminal window and use the folling command to run the application.
+With the database created and seeded, navigate to the project root in a terminal window and use the following command to run the application.
 
 `go run main.go`
 
@@ -35,6 +35,7 @@ curl -X POST http://localhost:1111/recipe/add -d '{ "Description": "Recipe descr
 ```
 
 ### Delete a recipe
+
 ```
 curl -X DELETE http://localhost:1111/recipe/delete/{id}
 ```

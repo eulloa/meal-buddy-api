@@ -218,13 +218,33 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-// TODO: check for empty strings
 func sanitize(res map[string]interface{}) {
 	required := []string{"Description", "Image", "Ingredients", "Instructions", "Name", "Url"}
 	validKeys := make([]string, 0)
 	invalidKeys := make([]string, 0)
 
-	for k := range res {
+	for k, v := range res {
+		if k == "Description" || k == "Image" || k == "Name" || k == "Url" {
+			if v == "" {
+				log.Fatalf("Error: %s must not be an empty string!", k)
+			}
+		}
+
+		if k == "Ingredients" {
+			vals := res["Ingredients"].([]interface{})
+			if len(vals) == 0 {
+				log.Fatal("Error: Ingredients must not be an empty array!")
+			}
+		}
+
+		if k == "Instructions" {
+			vals := res["Instructions"].([]interface{})
+			if len(vals) == 0 {
+				log.Fatal("Error: Instructions must not be an empty array!")
+			}
+		}
+
+		// check all required keys (and no redundant ones) are passed
 		c := contains(required, k)
 
 		if !c {

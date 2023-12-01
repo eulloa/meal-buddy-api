@@ -55,11 +55,19 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 	id, convErr := strconv.Atoi(mux.Vars(req)["id"])
 
 	data.CheckError(convErr)
+	db := data.Connect()
 
-	r := data.GetRecipe(id)
-	recipeJson, err := json.Marshal(r)
+	r, err := data.GetRecipe(db, id)
 
-	data.CheckError(err)
+	if err != nil {
+		j, _ := json.Marshal(err)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusNotFound)
+		rw.Write(j)
+		return
+	}
+
+	recipeJson, _ := json.Marshal(r)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)

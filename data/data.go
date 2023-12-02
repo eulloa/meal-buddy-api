@@ -25,6 +25,10 @@ type Recipe struct {
 	Url          string   `json:"url"`
 }
 
+type ErrorString struct {
+	Error string
+}
+
 func CheckError(err error) {
 	if err != nil {
 		panic(err)
@@ -41,7 +45,7 @@ func getVars() map[string]string {
 	return envs
 }
 
-func connect() *sql.DB {
+func Connect() *sql.DB {
 	port, err := strconv.Atoi(vars["PORT"])
 
 	CheckError(err)
@@ -63,7 +67,7 @@ func connect() *sql.DB {
 }
 
 func GetAllRecipes() []Recipe {
-	db := connect()
+	db := Connect()
 
 	rows, queryErr := db.Query("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
 
@@ -84,20 +88,28 @@ func GetAllRecipes() []Recipe {
 	return rs
 }
 
-// TODO: handle empty result set
-func GetRecipe(id int) Recipe {
-	db := connect()
+func GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 	stmt, prepareErr := db.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
 
-	CheckError(prepareErr)
+	if prepareErr != nil {
+		e := ErrorString{
+			Error: fmt.Sprint("There was an error preparing the SELECT statement"),
+		}
+		return nil, &e
+	}
 
 	var r Recipe
 	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 
-	CheckError(err)
+	if err != nil {
+		e := ErrorString{
+			Error: fmt.Sprintf("Unable to find recipe with id: %d", id),
+		}
+		return nil, &e
+	}
 
 	defer db.Close()
-	return r
+	return &r, nil
 }
 
 func CreateRecipeList(recipesInList int) []Recipe {
@@ -157,7 +169,7 @@ func AddRecipe(res map[string]interface{}) int {
 		Url:          res["Url"].(string),
 	}
 
-	db := connect()
+	db := Connect()
 
 	stmt, err := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
 
@@ -195,7 +207,7 @@ func AddRecipe(res map[string]interface{}) int {
 }
 
 func DeleteRecipe(id int) {
-	db := connect()
+	db := Connect()
 
 	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = $1")
 

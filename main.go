@@ -41,10 +41,19 @@ func add(rw http.ResponseWriter, req *http.Request) {
 	var res map[string]interface{}
 	json.NewDecoder(req.Body).Decode(&res)
 
-	id := data.AddRecipe(res)
-	idJson, err := json.Marshal(id)
+	db := data.Connect()
 
-	data.CheckError(err)
+	id, rErr := data.AddRecipe(db, res)
+
+	if rErr != nil {
+		j, _ := json.Marshal(rErr)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(j)
+		return
+	}
+
+	idJson, _ := json.Marshal(id)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)

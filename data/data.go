@@ -92,20 +92,18 @@ func GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 	stmt, prepareErr := db.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
 
 	if prepareErr != nil {
-		e := ErrorString{
-			Error: fmt.Sprint("There was an error preparing the SELECT statement"),
+		return nil, &ErrorString{
+			Error: "There was an error preparing the SELECT statement",
 		}
-		return nil, &e
 	}
 
 	var r Recipe
 	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 
 	if err != nil {
-		e := ErrorString{
+		return nil, &ErrorString{
 			Error: fmt.Sprintf("Unable to find recipe with id: %d", id),
 		}
-		return nil, &e
 	}
 
 	defer db.Close()
@@ -139,8 +137,12 @@ func CreateRecipeList(recipesInList int) []Recipe {
 	return list
 }
 
-func AddRecipe(res map[string]interface{}) int {
-	sanitize(res)
+func AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
+	err := sanitize(res)
+
+	if err != nil {
+		return 0, err
+	}
 
 	ins := res["Instructions"].([]interface{})
 	instructions := make([]string, 0)
@@ -169,41 +171,74 @@ func AddRecipe(res map[string]interface{}) int {
 		Url:          res["Url"].(string),
 	}
 
-	db := Connect()
+	stmt, prepareErr := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
 
-	stmt, err := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
-
-	CheckError(err)
+	if prepareErr != nil {
+		return 0, &ErrorString{
+			Error: "System encountered an error preparing record to insert into the database",
+		}
+	}
 
 	_, execErr := stmt.Exec(r.Name, r.Description, r.Image, r.Url)
 
-	CheckError(execErr)
+	if execErr != nil {
+		return 0, &ErrorString{
+			Error: "System encountered an error inserting record into the database",
+		}
+	}
 
 	idQuery, idErr := db.Prepare("SELECT id FROM recipes WHERE name = $1")
 
-	CheckError(idErr)
+	if idErr != nil {
+		return 0, &ErrorString{
+			Error: "System encountered an error preparing the select recipe statement",
+		}
+	}
 
 	row := idQuery.QueryRow(r.Name)
 
 	var id int
 	scanErr := row.Scan(&id)
 
-	CheckError(scanErr)
+	if scanErr != nil {
+		return 0, &ErrorString{
+			Error: fmt.Sprintf("System encountered an error scanning row with recipe id: %d", id),
+		}
+	}
 
 	ingsStmt, ingsErr := db.Prepare("INSERT INTO ingredients (ingredients, recipe_id) VALUES ($1, $2)")
 	insStmt, insErr := db.Prepare("INSERT INTO instructions (instructions, recipe_id) VALUES ($1, $2)")
 
-	CheckError(ingsErr)
-	CheckError(insErr)
+	if ingsErr != nil {
+		return 0, &ErrorString{
+			Error: "System encountered an error preparing insert into ingredients table",
+		}
+	}
+
+	if insErr != nil {
+		return 0, &ErrorString{
+			Error: "System encountered an error prepating insert into instructions table",
+		}
+	}
 
 	_, ingsExecErr := ingsStmt.Exec(pq.Array(r.Ingredients), id)
-	CheckError(ingsExecErr)
+
+	if ingsExecErr != nil {
+		return 0, &ErrorString{
+			Error: fmt.Sprintf("System encountered an error inserting ingredients associated with recipe id: %d", id),
+		}
+	}
 
 	_, insExecErr := insStmt.Exec(pq.Array(r.Instructions), id)
-	CheckError(insExecErr)
+
+	if insExecErr != nil {
+		return 0, &ErrorString{
+			Error: fmt.Sprintf("System encountered an error inserting instructions associated with recipe id: %d", id),
+		}
+	}
 
 	defer db.Close()
-	return id
+	return id, nil
 }
 
 func DeleteRecipe(id int) {
@@ -230,7 +265,7 @@ func contains(slice []string, item string) bool {
 	return false
 }
 
-func sanitize(res map[string]interface{}) {
+func sanitize(res map[string]interface{}) *ErrorString {
 	required := []string{"Description", "Image", "Ingredients", "Instructions", "Name", "Url"}
 	validKeys := make([]string, 0)
 	invalidKeys := make([]string, 0)
@@ -238,21 +273,27 @@ func sanitize(res map[string]interface{}) {
 	for k, v := range res {
 		if k == "Description" || k == "Image" || k == "Name" || k == "Url" {
 			if v == "" {
-				log.Fatalf("Error: %s must not be an empty string!", k)
+				return &ErrorString{
+					Error: fmt.Sprintf("%s must not be an empty string!", k),
+				}
 			}
 		}
 
 		if k == "Ingredients" {
 			vals := res["Ingredients"].([]interface{})
 			if len(vals) == 0 {
-				log.Fatal("Error: Ingredients must not be an empty array!")
+				return &ErrorString{
+					Error: "Ingredients must not be an empty array!",
+				}
 			}
 		}
 
 		if k == "Instructions" {
 			vals := res["Instructions"].([]interface{})
 			if len(vals) == 0 {
-				log.Fatal("Error: Instructions must not be an empty array!")
+				return &ErrorString{
+					Error: "Instructions must not be an empty array!",
+				}
 			}
 		}
 
@@ -267,10 +308,16 @@ func sanitize(res map[string]interface{}) {
 	}
 
 	if len(validKeys) != len(required) {
-		log.Fatal("Error: Post body data does not contain all required keys!")
+		return &ErrorString{
+			Error: "Post body data does not contain all required keys!",
+		}
 	}
 
 	if len(invalidKeys) > 0 {
-		log.Fatal("Error: Post body data contains redundant/illegal keys!")
+		return &ErrorString{
+			Error: "Post body data contains redundant/illegal keys!",
+		}
 	}
+
+	return nil
 }

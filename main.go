@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -27,7 +28,8 @@ func main() {
 }
 
 func index(rw http.ResponseWriter, req *http.Request) {
-	recipes := data.GetAllRecipes()
+	db := data.Connect()
+	recipes := data.GetAllRecipes(db)
 	recipesJson, err := json.Marshal(recipes)
 
 	data.CheckError(err)
@@ -63,7 +65,19 @@ func add(rw http.ResponseWriter, req *http.Request) {
 func recipe(rw http.ResponseWriter, req *http.Request) {
 	id, convErr := strconv.Atoi(mux.Vars(req)["id"])
 
-	data.CheckError(convErr)
+	if convErr != nil {
+		e := data.ErrorString{
+			Error: fmt.Sprintf(
+				"Unable to parse path param '%s'. Pass a valid unit instead", mux.Vars(req)["id"],
+			),
+		}
+		j, _ := json.Marshal(e)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(j)
+		return
+	}
+
 	db := data.Connect()
 
 	r, err := data.GetRecipe(db, id)
@@ -86,12 +100,32 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 func createList(rw http.ResponseWriter, req *http.Request) {
 	numOfRecipes, convError := strconv.Atoi(mux.Vars(req)["number"])
 
-	data.CheckError(convError)
+	if convError != nil {
+		e := data.ErrorString{
+			Error: fmt.Sprintf(
+				"Unable to parse path param '%s'. Pass a valid uint instead", mux.Vars(req)["number"],
+			),
+		}
+		j, _ := json.Marshal(e)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(j)
+		return
+	}
 
-	recipes := data.CreateRecipeList(numOfRecipes)
-	rJson, err := json.Marshal(recipes)
+	db := data.Connect()
 
-	data.CheckError(err)
+	recipes, err := data.CreateRecipeList(db, numOfRecipes)
+
+	if err != nil {
+		j, _ := json.Marshal(err)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(j)
+		return
+	}
+
+	rJson, _ := json.Marshal(recipes)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
@@ -101,9 +135,30 @@ func createList(rw http.ResponseWriter, req *http.Request) {
 func delete(rw http.ResponseWriter, req *http.Request) {
 	id, err := strconv.Atoi(mux.Vars(req)["id"])
 
-	data.CheckError(err)
+	if err != nil {
+		e := data.ErrorString{
+			Error: fmt.Sprintf(
+				"Unable to parse path param '%s'. Pass a valid uint instead", mux.Vars(req)["id"],
+			),
+		}
+		j, _ := json.Marshal(e)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(j)
+		return
+	}
 
-	data.DeleteRecipe(id)
+	db := data.Connect()
+
+	dErr := data.DeleteRecipe(db, id)
+
+	if dErr != nil {
+		j, _ := json.Marshal(dErr)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write(j)
+		return
+	}
 
 	rw.WriteHeader(http.StatusNoContent)
 }

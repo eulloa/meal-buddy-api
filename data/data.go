@@ -3,7 +3,6 @@ package data
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"math/rand"
 
 	"strconv"
@@ -66,9 +65,7 @@ func Connect() *sql.DB {
 	return db
 }
 
-func GetAllRecipes() []Recipe {
-	db := Connect()
-
+func GetAllRecipes(db *sql.DB) []Recipe {
 	rows, queryErr := db.Query("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
 
 	CheckError(queryErr)
@@ -110,20 +107,22 @@ func GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 	return &r, nil
 }
 
-func CreateRecipeList(recipesInList int) []Recipe {
-	recipes := GetAllRecipes()
+func CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *ErrorString) {
+	recipes := GetAllRecipes(db)
 	length := len(recipes)
 	var list []Recipe
 
 	switch {
 	case recipesInList > length:
-		log.Println("Warning: The number of requested recipes in the list is greater than the total number of recipes!")
-		break
+		return nil, &ErrorString{
+			Error: "The number of requested recipes in the list is greater than the total number of recipes!",
+		}
 	case recipesInList <= 0:
-		fmt.Println("Warning: Number of recipes in the list may not be less than or equal to 0!")
-		break
+		return nil, &ErrorString{
+			Error: "Number of recipes in the list may not be less than or equal to 0!",
+		}
 	case recipesInList == length:
-		return recipes
+		return &recipes, nil
 	default:
 		for recipesInList > 0 {
 			rand := rand.Intn(len(recipes))
@@ -134,7 +133,7 @@ func CreateRecipeList(recipesInList int) []Recipe {
 		}
 	}
 
-	return list
+	return &list, nil
 }
 
 func AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
@@ -241,18 +240,25 @@ func AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
 	return id, nil
 }
 
-func DeleteRecipe(id int) {
-	db := Connect()
-
+func DeleteRecipe(db *sql.DB, id int) *ErrorString {
 	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = $1")
 
-	CheckError(err)
+	if err != nil {
+		return &ErrorString{
+			Error: "There was an error preparing the delete recipe statement",
+		}
+	}
 
 	_, stmtErr := stmt.Exec(id)
 
-	CheckError(stmtErr)
+	if stmtErr != nil {
+		return &ErrorString{
+			Error: "There was an error executing the delete recipe statement",
+		}
+	}
 
 	defer db.Close()
+	return nil
 }
 
 func contains(slice []string, item string) bool {

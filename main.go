@@ -29,7 +29,10 @@ func main() {
 
 func index(rw http.ResponseWriter, req *http.Request) {
 	db := data.Connect()
-	recipes := data.GetAllRecipes(db)
+
+	r := new(data.Recipe)
+
+	recipes := r.GetAllRecipes(db)
 	recipesJson, err := json.Marshal(recipes)
 
 	data.CheckError(err)
@@ -44,8 +47,9 @@ func add(rw http.ResponseWriter, req *http.Request) {
 	json.NewDecoder(req.Body).Decode(&res)
 
 	db := data.Connect()
+	r := new(data.Recipe)
 
-	id, rErr := data.AddRecipe(db, res)
+	id, rErr := r.AddRecipe(db, res)
 
 	if rErr != nil {
 		j, _ := json.Marshal(rErr)
@@ -80,7 +84,8 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 
 	db := data.Connect()
 
-	r, err := data.GetRecipe(db, id)
+	r := new(data.Recipe)
+	recipe, err := r.GetRecipe(db, id)
 
 	if err != nil {
 		j, _ := json.Marshal(err)
@@ -90,7 +95,7 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	recipeJson, _ := json.Marshal(r)
+	recipeJson, _ := json.Marshal(recipe)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
@@ -115,7 +120,9 @@ func createList(rw http.ResponseWriter, req *http.Request) {
 
 	db := data.Connect()
 
-	recipes, err := data.CreateRecipeList(db, numOfRecipes)
+	r := new(data.Recipe)
+
+	recipes, err := r.CreateRecipeList(db, numOfRecipes)
 
 	if err != nil {
 		j, _ := json.Marshal(err)
@@ -149,8 +156,9 @@ func delete(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	db := data.Connect()
+	r := new(data.Recipe)
 
-	dErr := data.DeleteRecipe(db, id)
+	dErr := r.DeleteRecipe(db, id)
 
 	if dErr != nil {
 		j, _ := json.Marshal(dErr)

@@ -24,6 +24,14 @@ type Recipe struct {
 	Url          string   `json:"url"`
 }
 
+type IRecipe interface {
+	AddRecipe(db *sql.DB, vals map[string]interface{}) (int, *ErrorString)
+	CreateRecipeList(db *sql.DB, n int) (*[]Recipe, *ErrorString)
+	DeleteRecipe(db *sql.DB, id int) *ErrorString
+	GetAllRecipes(db *sql.DB) []Recipe
+	GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString)
+}
+
 type ErrorString struct {
 	Error string
 }
@@ -65,7 +73,7 @@ func Connect() *sql.DB {
 	return db
 }
 
-func GetAllRecipes(db *sql.DB) []Recipe {
+func (r Recipe) GetAllRecipes(db *sql.DB) []Recipe {
 	rows, queryErr := db.Query("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
 
 	CheckError(queryErr)
@@ -85,7 +93,7 @@ func GetAllRecipes(db *sql.DB) []Recipe {
 	return rs
 }
 
-func GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
+func (r Recipe) GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 	stmt, prepareErr := db.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
 
 	if prepareErr != nil {
@@ -94,7 +102,6 @@ func GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 		}
 	}
 
-	var r Recipe
 	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 
 	if err != nil {
@@ -107,8 +114,8 @@ func GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 	return &r, nil
 }
 
-func CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *ErrorString) {
-	recipes := GetAllRecipes(db)
+func (r Recipe) CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *ErrorString) {
+	recipes := r.GetAllRecipes(db)
 	length := len(recipes)
 	var list []Recipe
 
@@ -136,7 +143,7 @@ func CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *ErrorString) {
 	return &list, nil
 }
 
-func AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
+func (r Recipe) AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
 	err := sanitize(res)
 
 	if err != nil {
@@ -161,16 +168,15 @@ func AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
 		}
 	}
 
-	r := Recipe{
-		Description:  res["Description"].(string),
-		Image:        res["Image"].(string),
-		Ingredients:  ingredients,
-		Instructions: instructions,
-		Name:         res["Name"].(string),
-		Url:          res["Url"].(string),
-	}
+	r.Description = res["Description"].(string)
+	r.Image = res["Image"].(string)
+	r.Ingredients = ingredients
+	r.Instructions = instructions
+	r.Name = res["Name"].(string)
+	r.Url = res["Url"].(string)
 
 	stmt, prepareErr := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
+	defer stmt.Close()
 
 	if prepareErr != nil {
 		return 0, &ErrorString{
@@ -240,7 +246,7 @@ func AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
 	return id, nil
 }
 
-func DeleteRecipe(db *sql.DB, id int) *ErrorString {
+func (r Recipe) DeleteRecipe(db *sql.DB, id int) *ErrorString {
 	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = $1")
 
 	if err != nil {

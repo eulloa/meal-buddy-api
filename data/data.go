@@ -3,16 +3,14 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"math/rand"
 
-	"strconv"
-
-	"github.com/joho/godotenv"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
-var vars = getVars()
+// var vars = getVars()
 
 type Recipe struct {
 	Description  string `json:"description"`
@@ -42,24 +40,24 @@ func CheckError(err error) {
 	}
 }
 
-func getVars() map[string]string {
-	var envs map[string]string
+// func getVars() map[string]string {
+// 	var envs map[string]string
 
-	envs, err := godotenv.Read(".env")
+// 	envs, err := godotenv.Read(".env")
 
-	CheckError(err)
+// 	CheckError(err)
 
-	return envs
-}
+// 	return envs
+// }
 
 func Connect() *sql.DB {
-	port, err := strconv.Atoi(vars["PORT"])
+	// _, err := strconv.Atoi(vars["PORT"])
 
-	CheckError(err)
+	// CheckError(err)
 
 	conn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		vars["HOST"], port, vars["USER"], vars["PASSWORD"], vars["DBNAME"],
+		"localhost", 5432, "efrenulloa", "postgres", "mealbuddy",
 	)
 
 	db, connErr := sql.Open("postgres", conn)
@@ -94,17 +92,30 @@ func (r Recipe) GetAllRecipes(db *sql.DB) []Recipe {
 }
 
 func (r Recipe) GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
-	stmt, prepareErr := db.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatalf("%s", err.Error())
+	}
+	defer func() {
+		switch err {
+		case nil:
+			err = tx.Commit()
+		default:
+			tx.Rollback()
+		}
+	}()
 
-	if prepareErr != nil {
+	stmt, err := tx.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
+
+	if err != nil {
 		return nil, &ErrorString{
 			Error: "There was an error preparing the SELECT statement",
 		}
 	}
 
-	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
+	sErr := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 
-	if err != nil {
+	if sErr != nil {
 		return nil, &ErrorString{
 			Error: fmt.Sprintf("Unable to find recipe with id: %d", id),
 		}

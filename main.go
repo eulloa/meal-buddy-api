@@ -20,6 +20,7 @@ func main() {
 	router.HandleFunc("/recipe/add", add).Methods("POST")
 	router.HandleFunc("/recipe/list/{number}", createList).Methods("GET")
 	router.HandleFunc("/recipe/delete/{id}", delete).Methods("DELETE")
+	router.HandleFunc("/recipe/update/{id}", update).Methods("PUT")
 	router.HandleFunc("/", index).Methods("GET")
 
 	handler := cors.Default().Handler(router)
@@ -169,4 +170,19 @@ func delete(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	rw.WriteHeader(http.StatusNoContent)
+}
+
+func update(rw http.ResponseWriter, req *http.Request) {
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusNotImplemented)
+
+	e := struct {
+		Message string
+	}{
+		Message: "Method not implemented",
+	}
+
+	m, _ := json.Marshal(e)
+
+	rw.Write(m)
 }

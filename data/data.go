@@ -30,6 +30,7 @@ type IRecipe interface {
 	DeleteRecipe(db *sql.DB, id int) *ErrorString
 	GetAllRecipes(db *sql.DB) []Recipe
 	GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString)
+	UpdateRecipe(db *sql.DB, id int) (int, *ErrorString)
 }
 
 type ErrorString struct {
@@ -140,40 +141,18 @@ func (r Recipe) CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *Err
 		}
 	}
 
+	defer db.Close()
 	return &list, nil
 }
 
-func (r Recipe) AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorString) {
-	err := sanitize(res)
+func (r Recipe) AddRecipe(db *sql.DB, data map[string]interface{}) (int, *ErrorString) {
+	err := sanitize(data)
 
 	if err != nil {
 		return 0, err
 	}
 
-	ins := res["Instructions"].([]interface{})
-	instructions := make([]string, 0)
-
-	ings := res["Ingredients"].([]interface{})
-	ingredients := make([]string, 0)
-
-	for _, val := range ins {
-		if len(val.(string)) > 0 {
-			instructions = append(instructions, val.(string))
-		}
-	}
-
-	for _, val := range ings {
-		if len(val.(string)) > 0 {
-			ingredients = append(ingredients, val.(string))
-		}
-	}
-
-	r.Description = res["Description"].(string)
-	r.Image = res["Image"].(string)
-	r.Ingredients = ingredients
-	r.Instructions = instructions
-	r.Name = res["Name"].(string)
-	r.Url = res["Url"].(string)
+	r = recipeFromMap(data)
 
 	stmt, prepareErr := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
 	defer stmt.Close()
@@ -192,7 +171,7 @@ func (r Recipe) AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorSt
 		}
 	}
 
-	idQuery, idErr := db.Prepare("SELECT id FROM recipes WHERE name = $1")
+	idQuery, idErr := db.Prepare("SELECT id FROM recipes ORDER BY id DESC LIMIT 1")
 
 	if idErr != nil {
 		return 0, &ErrorString{
@@ -200,7 +179,7 @@ func (r Recipe) AddRecipe(db *sql.DB, res map[string]interface{}) (int, *ErrorSt
 		}
 	}
 
-	row := idQuery.QueryRow(r.Name)
+	row := idQuery.QueryRow()
 
 	var id int
 	scanErr := row.Scan(&id)
@@ -265,6 +244,94 @@ func (r Recipe) DeleteRecipe(db *sql.DB, id int) *ErrorString {
 
 	defer db.Close()
 	return nil
+}
+
+func (r Recipe) UpdateRecipe(db *sql.DB, id int, data map[string]interface{}) (*Recipe, *ErrorString) {
+	sErr := sanitize(data)
+
+	if sErr != nil {
+		return nil, &ErrorString{
+			Error: sErr.Error,
+		}
+	}
+
+	r = recipeFromMap(data)
+
+	stmt, updateErr := db.Prepare("UPDATE recipes SET (name, description, image, url) = ($1, $2, $3, $4) WHERE id = $5")
+	ingStmt, ingErr := db.Prepare("UPDATE ingredients SET ingredients = $1 WHERE recipe_id = $2")
+	insStmt, insErr := db.Prepare("UPDATE instructions SET instructions = $1 WHERE recipe_id = $2")
+
+	if updateErr != nil {
+		return nil, &ErrorString{
+			Error: updateErr.Error(),
+		}
+	}
+
+	if ingErr != nil {
+		return nil, &ErrorString{
+			Error: ingErr.Error(),
+		}
+	}
+
+	if insErr != nil {
+		return nil, &ErrorString{
+			Error: insErr.Error(),
+		}
+	}
+
+	_, execErr := stmt.Exec(&r.Name, &r.Description, &r.Image, &r.Url, id)
+	_, ingExecErr := ingStmt.Exec(pq.Array(r.Ingredients), id)
+	_, insExecErr := insStmt.Exec(pq.Array(r.Instructions), id)
+
+	if execErr != nil {
+		return nil, &ErrorString{
+			Error: execErr.Error(),
+		}
+	}
+
+	if ingExecErr != nil {
+		return nil, &ErrorString{
+			Error: ingExecErr.Error(),
+		}
+	}
+
+	if insExecErr != nil {
+		return nil, &ErrorString{
+			Error: insExecErr.Error(),
+		}
+	}
+
+	defer db.Close()
+	return &r, nil
+}
+
+func recipeFromMap(data map[string]interface{}) Recipe {
+	ins := data["Instructions"].([]interface{})
+	instructions := make([]string, 0)
+
+	ings := data["Ingredients"].([]interface{})
+	ingredients := make([]string, 0)
+
+	for _, val := range ins {
+		if len(val.(string)) > 0 {
+			instructions = append(instructions, val.(string))
+		}
+	}
+
+	for _, val := range ings {
+		if len(val.(string)) > 0 {
+			ingredients = append(ingredients, val.(string))
+		}
+	}
+
+	return Recipe{
+		Description:  data["Description"].(string),
+		Ingredients:  ingredients,
+		Image:        data["Image"].(string),
+		Instructions: instructions,
+		Name:         data["Name"].(string),
+		Url:          data["Url"].(string),
+	}
 }
 
 func contains(slice []string, item string) bool {

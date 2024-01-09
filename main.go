@@ -173,16 +173,37 @@ func delete(rw http.ResponseWriter, req *http.Request) {
 }
 
 func update(rw http.ResponseWriter, req *http.Request) {
-	rw.Header().Set("Content-Type", "application/json")
-	rw.WriteHeader(http.StatusNotImplemented)
+	id, err := strconv.Atoi(mux.Vars(req)["id"])
 
-	e := struct {
-		Message string
-	}{
-		Message: "Method not implemented",
+	if err != nil {
+		e := data.ErrorString{
+			Error: fmt.Sprintf(
+				"Unable to parse path param '%s'. Pass a valid uint instead", mux.Vars(req)["id"],
+			),
+		}
+		j, _ := json.Marshal(e)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write(j)
+		return
 	}
 
-	m, _ := json.Marshal(e)
+	db := data.Connect()
+	r := new(data.Recipe)
+	var data map[string]interface{}
+	json.NewDecoder(req.Body).Decode(&data)
+	updated, rErr := r.UpdateRecipe(db, id, data)
 
-	rw.Write(m)
+	if rErr != nil {
+		j, _ := json.Marshal(rErr)
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write(j)
+		return
+	}
+
+	rw.Header().Set("Content-Type", "application/json")
+	rw.WriteHeader(http.StatusOK)
+	updatedJSOn, _ := json.Marshal(updated)
+	rw.Write(updatedJSOn)
 }

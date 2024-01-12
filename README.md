@@ -6,7 +6,22 @@ My wife and I 🧔💁🏻‍♀️ are busy people and often don't have enough 
 
 ### How to run the meal-buddy-api locally
 
-Once you have Golang and PostgreSQL installed, pull down the meal-buddy-api and run the `db-init.sql` script to create a database and the tables as well as seed it with some initial recipes.
+Once you have Golang and PostgreSQL installed, pull down the meal-buddy-api and change the `USER` value in the `.env` file to your own PostgreSQL user. Once you have established a connection to PostgreSQL, you can view information about current connection values by running:
+
+`\conninfo`
+
+Your `.env` should look like:
+
+```
+# PostgreSQL
+DBNAME   = "mealbuddy"
+HOST     = "localhost"
+PASSWORD = "postgres"
+PORT     = 5432
+USER     = {your postgres username}
+```
+
+Now, run the `db-init.sql` script to create a `mealbuddy` database, tables for recipes and associated ingredients and instructions, as well as seed the tables with some initial recipe data.
 
 `psql -h localhost -U {your postgres username} -f scripts/db-init.sql`
 
@@ -38,6 +53,12 @@ curl -X POST http://localhost:1111/recipe/add -d '{ "Description": "Recipe descr
 
 ```
 curl -X DELETE http://localhost:1111/recipe/delete/{id}
+```
+
+### Update a recipe
+
+```
+curl -X PUT http://localhost:1111/recipe/update/{id} -d '{ "Description": "Updated description", "Image": "updated-recipe-name.png", "Ingredients": ["Updated ingredients", "ingredient..."], "Instructions": ["Updated instruction", "instruction numero..."], "Name": "Updated recipe name", "Url": "https://myrecipe.com/recipe/updated" }' -H "Content-Type: application/json"
 ```
 
 _Coming Soon: a UI to consume, display and allow for the modification, creation, deletion and updating of recipes using the endpoints exposed by the meal-buddy-api._

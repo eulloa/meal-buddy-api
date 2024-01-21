@@ -15,9 +15,9 @@ import (
 var vars = getVars()
 
 type Recipe struct {
-	Description  string `json:"description"`
-	Name         string `json:"name,omitempty"`
-	Id           int
+	Description  string   `json:"description"`
+	Name         string   `json:"name,omitempty"`
+	Id           int      `json:"id"`
 	Image        string   `json:"image"`
 	Ingredients  []string `json:"ingredients"`
 	Instructions []string `json:"instructions"`

@@ -17,7 +17,7 @@ var vars = getVars()
 type Recipe struct {
 	Description  string `json:"description"`
 	Name         string `json:"name,omitempty"`
-	id           int
+	Id           int
 	Image        string   `json:"image"`
 	Ingredients  []string `json:"ingredients"`
 	Instructions []string `json:"instructions"`
@@ -83,7 +83,7 @@ func (r Recipe) GetAllRecipes(db *sql.DB) []Recipe {
 
 	for rows.Next() {
 		var r Recipe
-		e := rows.Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
+		e := rows.Scan(&r.Id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 		CheckError(e)
 		rs = append(rs, r)
 	}
@@ -103,7 +103,7 @@ func (r Recipe) GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 		}
 	}
 
-	err := stmt.QueryRow(id).Scan(&r.id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
+	err := stmt.QueryRow(id).Scan(&r.Id, &r.Name, &r.Description, &r.Image, (*pq.StringArray)(&r.Ingredients), (*pq.StringArray)(&r.Instructions), &r.Url)
 
 	if err != nil {
 		return nil, &ErrorString{
@@ -145,6 +145,7 @@ func (r Recipe) CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *Err
 	return &list, nil
 }
 
+// TODO: return (*Recipe, *ErrorString)
 func (r Recipe) AddRecipe(db *sql.DB, data map[string]interface{}) (int, *ErrorString) {
 	err := sanitize(data)
 

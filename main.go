@@ -50,7 +50,7 @@ func add(rw http.ResponseWriter, req *http.Request) {
 	db := data.Connect()
 	r := new(data.Recipe)
 
-	id, rErr := r.AddRecipe(db, res)
+	recipe, rErr := r.AddRecipe(db, res)
 
 	if rErr != nil {
 		j, _ := json.Marshal(rErr)
@@ -60,7 +60,7 @@ func add(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	idJson, _ := json.Marshal(id)
+	idJson, _ := json.Marshal(recipe)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)

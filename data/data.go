@@ -34,7 +34,7 @@ type IRecipe interface {
 }
 
 type ErrorString struct {
-	Error string
+	Error string `json:"error"`
 }
 
 func CheckError(err error) {

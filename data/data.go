@@ -44,11 +44,11 @@ func CheckError(err error) {
 }
 
 func getVars() map[string]string {
-	var envs map[string]string
-
 	envs, err := godotenv.Read(".env")
-
-	CheckError(err)
+	if err != nil {
+		envs, err = godotenv.Read("../.env")
+		CheckError(err)
+	}
 
 	return envs
 }
@@ -156,13 +156,14 @@ func (r Recipe) AddRecipe(db *sql.DB, data map[string]interface{}) (int, *ErrorS
 	r = recipeFromMap(data)
 
 	stmt, prepareErr := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
-	defer stmt.Close()
 
 	if prepareErr != nil {
 		return 0, &ErrorString{
 			Error: "System encountered an error preparing record to insert into the database",
 		}
 	}
+
+	defer stmt.Close()
 
 	_, execErr := stmt.Exec(r.Name, r.Description, r.Image, r.Url)
 

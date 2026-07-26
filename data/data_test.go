@@ -263,16 +263,17 @@ func TestCheckError_NonNilError(t *testing.T) {
 
 func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
 	t.Helper()
-	db, mock, err := sqlmock.New()
+	mockDB, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("failed to open sqlmock: %s", err)
 	}
-	return db, mock
+	db = mockDB
+	return mockDB, mock
 }
 
 func TestGetRecipe_Success(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	rows := sqlmock.NewRows([]string{"id", "name", "description", "image", "ingredients", "instructions", "url"}).
 		AddRow(1, "Pasta", "Delicious pasta", "pasta.png",
@@ -281,7 +282,7 @@ func TestGetRecipe_Success(t *testing.T) {
 	mock.ExpectPrepare("SELECT .+ FROM recipes").ExpectQuery().WithArgs(1).WillReturnRows(rows)
 
 	recipe := new(Recipe)
-	result, err := recipe.GetRecipe(db, 1)
+	result, err := recipe.GetRecipe(1)
 
 	if err != nil {
 		t.Errorf("expected no error, got: %s", err.Error)
@@ -305,14 +306,14 @@ func TestGetRecipe_Success(t *testing.T) {
 }
 
 func TestGetRecipe_NotFound(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	mock.ExpectPrepare("SELECT .+ FROM recipes").ExpectQuery().WithArgs(999).
 		WillReturnError(sql.ErrNoRows)
 
 	recipe := new(Recipe)
-	result, err := recipe.GetRecipe(db, 999)
+	result, err := recipe.GetRecipe(999)
 
 	if result != nil {
 		t.Error("expected nil result for non-existent recipe")
@@ -332,14 +333,14 @@ func TestGetRecipe_NotFound(t *testing.T) {
 // --- DeleteRecipe tests (sqlmock) ---
 
 func TestDeleteRecipe_Success(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	mock.ExpectPrepare("DELETE FROM recipes").ExpectExec().WithArgs(1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	recipe := new(Recipe)
-	err := recipe.DeleteRecipe(db, 1)
+	err := recipe.DeleteRecipe(1)
 
 	if err != nil {
 		t.Errorf("expected no error, got: %s", err.Error)
@@ -351,14 +352,14 @@ func TestDeleteRecipe_Success(t *testing.T) {
 }
 
 func TestDeleteRecipe_PrepareError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	mock.ExpectPrepare("DELETE FROM recipes").
 		WillReturnError(errors.New("prepare failed"))
 
 	recipe := new(Recipe)
-	err := recipe.DeleteRecipe(db, 1)
+	err := recipe.DeleteRecipe(1)
 
 	if err == nil {
 		t.Fatal("expected error on prepare failure, got nil")
@@ -369,14 +370,14 @@ func TestDeleteRecipe_PrepareError(t *testing.T) {
 }
 
 func TestDeleteRecipe_ExecError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	mock.ExpectPrepare("DELETE FROM recipes").ExpectExec().WithArgs(1).
 		WillReturnError(errors.New("exec failed"))
 
 	recipe := new(Recipe)
-	err := recipe.DeleteRecipe(db, 1)
+	err := recipe.DeleteRecipe(1)
 
 	if err == nil {
 		t.Fatal("expected error on exec failure, got nil")
@@ -389,8 +390,8 @@ func TestDeleteRecipe_ExecError(t *testing.T) {
 // --- GetAllRecipes tests (sqlmock) ---
 
 func TestGetAllRecipes_Success(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	rows := sqlmock.NewRows([]string{"id", "name", "description", "image", "ingredients", "instructions", "url"}).
 		AddRow(1, "Pasta", "Desc1", "img1.png", `{"flour"}`, `{"boil"}`, "https://a.com").
@@ -399,7 +400,7 @@ func TestGetAllRecipes_Success(t *testing.T) {
 	mock.ExpectQuery("SELECT .+ FROM recipes").WillReturnRows(rows)
 
 	recipe := new(Recipe)
-	result := recipe.GetAllRecipes(db)
+	result := recipe.GetAllRecipes()
 
 	if len(result) != 2 {
 		t.Fatalf("expected 2 recipes, got %d", len(result))
@@ -417,15 +418,15 @@ func TestGetAllRecipes_Success(t *testing.T) {
 }
 
 func TestGetAllRecipes_Empty(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	rows := sqlmock.NewRows([]string{"id", "name", "description", "image", "ingredients", "instructions", "url"})
 
 	mock.ExpectQuery("SELECT .+ FROM recipes").WillReturnRows(rows)
 
 	recipe := new(Recipe)
-	result := recipe.GetAllRecipes(db)
+	result := recipe.GetAllRecipes()
 
 	if len(result) != 0 {
 		t.Errorf("expected 0 recipes, got %d", len(result))
@@ -439,8 +440,8 @@ func TestGetAllRecipes_Empty(t *testing.T) {
 // --- AddRecipe tests (sqlmock) ---
 
 func TestAddRecipe_Success(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -456,7 +457,7 @@ func TestAddRecipe_Success(t *testing.T) {
 	mock.ExpectExec("INSERT INTO instructions").WillReturnResult(sqlmock.NewResult(0, 1))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(db, data)
+	id, err := recipe.AddRecipe(data)
 
 	if err != nil {
 		t.Errorf("expected no error, got: %s", err.Error)
@@ -471,15 +472,15 @@ func TestAddRecipe_Success(t *testing.T) {
 }
 
 func TestAddRecipe_SanitizeError(t *testing.T) {
-	db, _ := setupMockDB(t)
-	defer db.Close()
+	mockDB, _ := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := map[string]interface{}{
 		"Name": "",
 	}
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(db, data)
+	id, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected sanitize error, got nil")
@@ -490,8 +491,8 @@ func TestAddRecipe_SanitizeError(t *testing.T) {
 }
 
 func TestAddRecipe_PrepareInsertError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -499,7 +500,7 @@ func TestAddRecipe_PrepareInsertError(t *testing.T) {
 		WillReturnError(errors.New("prepare failed"))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(db, data)
+	id, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -513,8 +514,8 @@ func TestAddRecipe_PrepareInsertError(t *testing.T) {
 }
 
 func TestAddRecipe_ExecInsertError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -522,7 +523,7 @@ func TestAddRecipe_ExecInsertError(t *testing.T) {
 		WillReturnError(errors.New("exec failed"))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(db, data)
+	id, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -536,8 +537,8 @@ func TestAddRecipe_ExecInsertError(t *testing.T) {
 }
 
 func TestAddRecipe_SelectIdError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -548,7 +549,7 @@ func TestAddRecipe_SelectIdError(t *testing.T) {
 		WillReturnError(errors.New("prepare failed"))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(db, data)
+	id, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -564,8 +565,8 @@ func TestAddRecipe_SelectIdError(t *testing.T) {
 // --- UpdateRecipe tests (sqlmock) ---
 
 func TestUpdateRecipe_Success(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -577,7 +578,7 @@ func TestUpdateRecipe_Success(t *testing.T) {
 	mock.ExpectExec("UPDATE instructions").WillReturnResult(sqlmock.NewResult(0, 1))
 
 	recipe := new(Recipe)
-	result, err := recipe.UpdateRecipe(db, 1, data)
+	result, err := recipe.UpdateRecipe(1, data)
 
 	if err != nil {
 		t.Errorf("expected no error, got: %s", err.Error)
@@ -595,15 +596,15 @@ func TestUpdateRecipe_Success(t *testing.T) {
 }
 
 func TestUpdateRecipe_SanitizeError(t *testing.T) {
-	db, _ := setupMockDB(t)
-	defer db.Close()
+	mockDB, _ := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := map[string]interface{}{
 		"Name": "",
 	}
 
 	recipe := new(Recipe)
-	result, err := recipe.UpdateRecipe(db, 1, data)
+	result, err := recipe.UpdateRecipe(1, data)
 
 	if err == nil {
 		t.Fatal("expected sanitize error, got nil")
@@ -614,8 +615,8 @@ func TestUpdateRecipe_SanitizeError(t *testing.T) {
 }
 
 func TestUpdateRecipe_PrepareError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -623,7 +624,7 @@ func TestUpdateRecipe_PrepareError(t *testing.T) {
 		WillReturnError(errors.New("prepare failed"))
 
 	recipe := new(Recipe)
-	result, err := recipe.UpdateRecipe(db, 1, data)
+	result, err := recipe.UpdateRecipe(1, data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -634,8 +635,8 @@ func TestUpdateRecipe_PrepareError(t *testing.T) {
 }
 
 func TestUpdateRecipe_ExecError(t *testing.T) {
-	db, mock := setupMockDB(t)
-	defer db.Close()
+	mockDB, mock := setupMockDB(t)
+	defer mockDB.Close()
 
 	data := validData()
 
@@ -643,7 +644,7 @@ func TestUpdateRecipe_ExecError(t *testing.T) {
 		WillReturnError(errors.New("exec failed"))
 
 	recipe := new(Recipe)
-	result, err := recipe.UpdateRecipe(db, 1, data)
+	result, err := recipe.UpdateRecipe(1, data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")

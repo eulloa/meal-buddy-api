@@ -13,6 +13,9 @@ import (
 )
 
 func main() {
+	data.InitDB()
+	defer data.CloseDB()
+
 	router := mux.NewRouter()
 	port := ":1111"
 
@@ -29,11 +32,9 @@ func main() {
 }
 
 func index(rw http.ResponseWriter, req *http.Request) {
-	db := data.Connect()
-
 	r := new(data.Recipe)
 
-	recipes := r.GetAllRecipes(db)
+	recipes := r.GetAllRecipes()
 	recipesJson, err := json.Marshal(recipes)
 
 	data.CheckError(err)
@@ -47,10 +48,9 @@ func add(rw http.ResponseWriter, req *http.Request) {
 	var res map[string]interface{}
 	json.NewDecoder(req.Body).Decode(&res)
 
-	db := data.Connect()
 	r := new(data.Recipe)
 
-	recipe, rErr := r.AddRecipe(db, res)
+	recipe, rErr := r.AddRecipe(res)
 
 	if rErr != nil {
 		j, _ := json.Marshal(rErr)
@@ -83,10 +83,8 @@ func recipe(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := data.Connect()
-
 	r := new(data.Recipe)
-	recipe, err := r.GetRecipe(db, id)
+	recipe, err := r.GetRecipe(id)
 
 	if err != nil {
 		j, _ := json.Marshal(err)
@@ -119,11 +117,9 @@ func createList(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := data.Connect()
-
 	r := new(data.Recipe)
 
-	recipes, err := r.CreateRecipeList(db, numOfRecipes)
+	recipes, err := r.CreateRecipeList(numOfRecipes)
 
 	if err != nil {
 		j, _ := json.Marshal(err)
@@ -156,10 +152,9 @@ func delete(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := data.Connect()
 	r := new(data.Recipe)
 
-	dErr := r.DeleteRecipe(db, id)
+	dErr := r.DeleteRecipe(id)
 
 	if dErr != nil {
 		j, _ := json.Marshal(dErr)
@@ -188,11 +183,10 @@ func update(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := data.Connect()
 	r := new(data.Recipe)
 	var data map[string]interface{}
 	json.NewDecoder(req.Body).Decode(&data)
-	updated, rErr := r.UpdateRecipe(db, id, data)
+	updated, rErr := r.UpdateRecipe(id, data)
 
 	if rErr != nil {
 		j, _ := json.Marshal(rErr)

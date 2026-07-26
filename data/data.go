@@ -4,15 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
-
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
-var vars = getVars()
+var (
+	vars = getVars()
+	db   *sql.DB
+)
 
 type Recipe struct {
 	Description  string   `json:"description"`
@@ -25,12 +28,12 @@ type Recipe struct {
 }
 
 type IRecipe interface {
-	AddRecipe(db *sql.DB, vals map[string]interface{}) (int, *ErrorString)
-	CreateRecipeList(db *sql.DB, n int) (*[]Recipe, *ErrorString)
-	DeleteRecipe(db *sql.DB, id int) *ErrorString
-	GetAllRecipes(db *sql.DB) []Recipe
-	GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString)
-	UpdateRecipe(db *sql.DB, id int) (int, *ErrorString)
+	AddRecipe(vals map[string]interface{}) (int, *ErrorString)
+	CreateRecipeList(n int) (*[]Recipe, *ErrorString)
+	DeleteRecipe(id int) *ErrorString
+	GetAllRecipes() []Recipe
+	GetRecipe(id int) (*Recipe, *ErrorString)
+	UpdateRecipe(id int) (int, *ErrorString)
 }
 
 type ErrorString struct {
@@ -53,9 +56,8 @@ func getVars() map[string]string {
 	return envs
 }
 
-func Connect() *sql.DB {
+func InitDB() {
 	port, err := strconv.Atoi(vars["PORT"])
-
 	CheckError(err)
 
 	conn := fmt.Sprintf(
@@ -63,18 +65,25 @@ func Connect() *sql.DB {
 		vars["HOST"], port, vars["USER"], vars["PASSWORD"], vars["DBNAME"],
 	)
 
-	db, connErr := sql.Open("postgres", conn)
-
+	var connErr error
+	db, connErr = sql.Open("postgres", conn)
 	CheckError(connErr)
 
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	pingErr := db.Ping()
-
 	CheckError(pingErr)
-
-	return db
 }
 
-func (r Recipe) GetAllRecipes(db *sql.DB) []Recipe {
+func CloseDB() {
+	if db != nil {
+		db.Close()
+	}
+}
+
+func (r Recipe) GetAllRecipes() []Recipe {
 	rows, queryErr := db.Query("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id")
 
 	CheckError(queryErr)
@@ -89,12 +98,11 @@ func (r Recipe) GetAllRecipes(db *sql.DB) []Recipe {
 	}
 
 	defer rows.Close()
-	defer db.Close()
 
 	return rs
 }
 
-func (r Recipe) GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
+func (r Recipe) GetRecipe(id int) (*Recipe, *ErrorString) {
 	stmt, prepareErr := db.Prepare("SELECT id, name, description, image, ingredients, instructions, url FROM recipes r INNER JOIN ingredients ing ON r.id = ing.recipe_id INNER JOIN instructions ins ON r.id = ins.recipe_id WHERE r.id = $1")
 
 	if prepareErr != nil {
@@ -111,12 +119,11 @@ func (r Recipe) GetRecipe(db *sql.DB, id int) (*Recipe, *ErrorString) {
 		}
 	}
 
-	defer db.Close()
 	return &r, nil
 }
 
-func (r Recipe) CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *ErrorString) {
-	recipes := r.GetAllRecipes(db)
+func (r Recipe) CreateRecipeList(recipesInList int) (*[]Recipe, *ErrorString) {
+	recipes := r.GetAllRecipes()
 	length := len(recipes)
 	var list []Recipe
 
@@ -141,12 +148,11 @@ func (r Recipe) CreateRecipeList(db *sql.DB, recipesInList int) (*[]Recipe, *Err
 		}
 	}
 
-	defer db.Close()
 	return &list, nil
 }
 
 // TODO: return (*Recipe, *ErrorString)
-func (r Recipe) AddRecipe(db *sql.DB, data map[string]interface{}) (int, *ErrorString) {
+func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	err := sanitize(data)
 
 	if err != nil {
@@ -223,11 +229,10 @@ func (r Recipe) AddRecipe(db *sql.DB, data map[string]interface{}) (int, *ErrorS
 		}
 	}
 
-	defer db.Close()
 	return id, nil
 }
 
-func (r Recipe) DeleteRecipe(db *sql.DB, id int) *ErrorString {
+func (r Recipe) DeleteRecipe(id int) *ErrorString {
 	stmt, err := db.Prepare("DELETE FROM recipes WHERE id = $1")
 
 	if err != nil {
@@ -244,11 +249,10 @@ func (r Recipe) DeleteRecipe(db *sql.DB, id int) *ErrorString {
 		}
 	}
 
-	defer db.Close()
 	return nil
 }
 
-func (r Recipe) UpdateRecipe(db *sql.DB, id int, data map[string]interface{}) (*Recipe, *ErrorString) {
+func (r Recipe) UpdateRecipe(id int, data map[string]interface{}) (*Recipe, *ErrorString) {
 	sErr := sanitize(data)
 
 	if sErr != nil {
@@ -303,7 +307,6 @@ func (r Recipe) UpdateRecipe(db *sql.DB, id int, data map[string]interface{}) (*
 		}
 	}
 
-	defer db.Close()
 	return &r, nil
 }
 

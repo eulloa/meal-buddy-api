@@ -457,13 +457,16 @@ func TestAddRecipe_Success(t *testing.T) {
 	mock.ExpectExec("INSERT INTO instructions").WillReturnResult(sqlmock.NewResult(0, 1))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(data)
+	result, err := recipe.AddRecipe(data)
 
 	if err != nil {
 		t.Errorf("expected no error, got: %s", err.Error)
 	}
-	if id != 11 {
-		t.Errorf("expected id 11, got %d", id)
+	if result == nil {
+		t.Fatal("expected recipe result, got nil")
+	}
+	if result.Id != 0 {
+		t.Errorf("expected id 0, got %d", result.Id)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -480,13 +483,13 @@ func TestAddRecipe_SanitizeError(t *testing.T) {
 	}
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(data)
+	result, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected sanitize error, got nil")
 	}
-	if id != 0 {
-		t.Errorf("expected id 0 on error, got %d", id)
+	if result != nil {
+		t.Error("expected nil result on error")
 	}
 }
 
@@ -500,13 +503,13 @@ func TestAddRecipe_PrepareInsertError(t *testing.T) {
 		WillReturnError(errors.New("prepare failed"))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(data)
+	result, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if id != 0 {
-		t.Errorf("expected id 0 on error, got %d", id)
+	if result != nil {
+		t.Error("expected nil result on error")
 	}
 	if err.Error != "System encountered an error preparing record to insert into the database" {
 		t.Errorf("unexpected error message: %s", err.Error)
@@ -523,13 +526,13 @@ func TestAddRecipe_ExecInsertError(t *testing.T) {
 		WillReturnError(errors.New("exec failed"))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(data)
+	result, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if id != 0 {
-		t.Errorf("expected id 0 on error, got %d", id)
+	if result != nil {
+		t.Error("expected nil result on error")
 	}
 	if err.Error != "System encountered an error inserting record into the database" {
 		t.Errorf("unexpected error message: %s", err.Error)
@@ -549,13 +552,13 @@ func TestAddRecipe_SelectIdError(t *testing.T) {
 		WillReturnError(errors.New("prepare failed"))
 
 	recipe := new(Recipe)
-	id, err := recipe.AddRecipe(data)
+	result, err := recipe.AddRecipe(data)
 
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if id != 0 {
-		t.Errorf("expected id 0 on error, got %d", id)
+	if result != nil {
+		t.Error("expected nil result on error")
 	}
 	if err.Error != "System encountered an error preparing the select recipe statement" {
 		t.Errorf("unexpected error message: %s", err.Error)

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"slices"
 	"strconv"
 	"time"
 
@@ -338,16 +339,6 @@ func recipeFromMap(data map[string]interface{}) Recipe {
 	}
 }
 
-func contains(slice []string, item string) bool {
-	for _, v := range slice {
-		if item == v {
-			return true
-		}
-	}
-
-	return false
-}
-
 func sanitize(res map[string]interface{}) *ErrorString {
 	required := []string{"Description", "Image", "Ingredients", "Instructions", "Name", "Url"}
 	validKeys := make([]string, 0)
@@ -381,7 +372,7 @@ func sanitize(res map[string]interface{}) *ErrorString {
 		}
 
 		// check all required keys (and no redundant ones) are passed
-		c := contains(required, k)
+		c := slices.Contains(required, k)
 
 		if !c {
 			invalidKeys = append(invalidKeys, k)

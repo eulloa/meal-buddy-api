@@ -9,41 +9,6 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
-// --- contains tests ---
-
-func TestContains_Found(t *testing.T) {
-	slice := []string{"apple", "banana", "cherry"}
-	if !contains(slice, "banana") {
-		t.Error("expected contains to return true for 'banana'")
-	}
-}
-
-func TestContains_NotFound(t *testing.T) {
-	slice := []string{"apple", "banana", "cherry"}
-	if contains(slice, "grape") {
-		t.Error("expected contains to return false for 'grape'")
-	}
-}
-
-func TestContains_EmptySlice(t *testing.T) {
-	if contains([]string{}, "apple") {
-		t.Error("expected contains to return false for empty slice")
-	}
-}
-
-func TestContains_EmptyString(t *testing.T) {
-	slice := []string{"", "banana"}
-	if !contains(slice, "") {
-		t.Error("expected contains to return true for empty string in slice")
-	}
-}
-
-func TestContains_SingleElement(t *testing.T) {
-	if !contains([]string{"only"}, "only") {
-		t.Error("expected contains to return true for single matching element")
-	}
-}
-
 // --- sanitize tests ---
 
 func validData() map[string]interface{} {

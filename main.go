@@ -60,11 +60,11 @@ func add(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	idJson, _ := json.Marshal(recipe)
+	recipeJson, _ := json.Marshal(recipe)
 
 	rw.Header().Set("Content-Type", "application/json")
 	rw.WriteHeader(http.StatusCreated)
-	rw.Write(idJson)
+	rw.Write(recipeJson)
 }
 
 func recipe(rw http.ResponseWriter, req *http.Request) {

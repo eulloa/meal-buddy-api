@@ -151,12 +151,11 @@ func (r Recipe) CreateRecipeList(recipesInList int) (*[]Recipe, *ErrorString) {
 	return &list, nil
 }
 
-// TODO: return (*Recipe, *ErrorString)
-func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
+func (r Recipe) AddRecipe(data map[string]interface{}) (*Recipe, *ErrorString) {
 	err := sanitize(data)
 
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	r = recipeFromMap(data)
@@ -164,7 +163,7 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	stmt, prepareErr := db.Prepare("INSERT INTO recipes (name, description, image, url) VALUES ($1, $2, $3, $4)")
 
 	if prepareErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: "System encountered an error preparing record to insert into the database",
 		}
 	}
@@ -174,7 +173,7 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	_, execErr := stmt.Exec(r.Name, r.Description, r.Image, r.Url)
 
 	if execErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: "System encountered an error inserting record into the database",
 		}
 	}
@@ -182,7 +181,7 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	idQuery, idErr := db.Prepare("SELECT id FROM recipes ORDER BY id DESC LIMIT 1")
 
 	if idErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: "System encountered an error preparing the select recipe statement",
 		}
 	}
@@ -193,7 +192,7 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	scanErr := row.Scan(&id)
 
 	if scanErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: fmt.Sprintf("System encountered an error scanning row with recipe id: %d", id),
 		}
 	}
@@ -202,13 +201,13 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	insStmt, insErr := db.Prepare("INSERT INTO instructions (instructions, recipe_id) VALUES ($1, $2)")
 
 	if ingsErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: "System encountered an error preparing insert into ingredients table",
 		}
 	}
 
 	if insErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: "System encountered an error prepating insert into instructions table",
 		}
 	}
@@ -216,7 +215,7 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	_, ingsExecErr := ingsStmt.Exec(pq.Array(r.Ingredients), id)
 
 	if ingsExecErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: fmt.Sprintf("System encountered an error inserting ingredients associated with recipe id: %d", id),
 		}
 	}
@@ -224,12 +223,12 @@ func (r Recipe) AddRecipe(data map[string]interface{}) (int, *ErrorString) {
 	_, insExecErr := insStmt.Exec(pq.Array(r.Instructions), id)
 
 	if insExecErr != nil {
-		return 0, &ErrorString{
+		return nil, &ErrorString{
 			Error: fmt.Sprintf("System encountered an error inserting instructions associated with recipe id: %d", id),
 		}
 	}
 
-	return id, nil
+	return &r, nil
 }
 
 func (r Recipe) DeleteRecipe(id int) *ErrorString {
